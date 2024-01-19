@@ -23,7 +23,7 @@ df <- read_excel("/Users/shirleycrenshaw/Dropbox/Mac/Desktop/Coffee_sales/Coffee
 ```
 
 
-Product {data-orientation=rows}
+Overview {data-orientation=rows}
 =========
 
 Row
@@ -58,19 +58,19 @@ valueBox(total_with_dollar_sign, "Total Sales", icon="fa-credit-card", col="rgb(
 ### Top Ten Products 3
 ```{r}
 
-january_total <- df %>%
-  filter(format(transaction_date, "%B") == "January") %>%
+january_total <- df |>
+  filter(format(transaction_date, "%B") == "January") |>
   summarise(total = sum(transaction_qty * unit_price, na.rm = TRUE))
 
-june_total <- df %>%
-  filter(format(transaction_date, "%B") == "June") %>%
+june_total <- df |>
+  filter(format(transaction_date, "%B") == "June") |>
   summarise(total = sum(transaction_qty * unit_price, na.rm = TRUE))
 
 percentage_increase <- ((june_total$total - january_total$total) / january_total$total) * 100
 
 formatted_percentage_increase <- paste(round(percentage_increase), "%", sep = "")
 
-valueBox(formatted_percentage_increase, "Percent Increase in Sales from Jan to June", icon = "fa-line-chart",
+valueBox(formatted_percentage_increase, "Percent Increase in Sales from Janurary to June", icon = "fa-line-chart",
          col = "rgb(94, 201, 98)")
 
 ```
