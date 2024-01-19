@@ -1,0 +1,210 @@
+---
+title: "Maven Roasters Coffee Sales"
+output: 
+  flexdashboard::flex_dashboard:
+    #orientation: rows
+    vertical_layout: scroll
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(highcharter)
+library(htmltools)
+library(viridis)
+library(plotly)
+library(kableExtra)
+library(readxl)
+```
+
+```{r}
+#Importing data
+df <- read_excel("/Users/shirleycrenshaw/Dropbox/Mac/Desktop/Coffee_sales/Coffee_Shop_Sales.xlsx")
+```
+
+
+Product {data-orientation=rows}
+=========
+
+Row
+-----------------------------------------------------------------------
+
+### Total Transactions 
+```{r}
+transtotal <- df %>%
+  summarise(total = sum(transaction_qty))
+
+formatted_total <- format(transtotal$total, big.mark = ",")
+
+valueBox(formatted_total, "Total Transactions", icon = "fa-users", col= "rgb(59, 82, 139)")
+
+```
+### Total Sales
+
+```{r}
+
+total_value <- df %>%
+  summarise(total = sum(transaction_qty * unit_price, na.rm = TRUE))
+
+rounded_total_value <- round(total_value$total)
+formatted_total_value <- format(rounded_total_value, big.mark = ",")
+
+total_with_dollar_sign <- paste("$", formatted_total_value, sep = "")
+
+valueBox(total_with_dollar_sign, "Total Sales", icon="fa-credit-card", col="rgb(33, 145, 140)")
+
+
+```
+### Top Ten Products 3
+```{r}
+
+january_total <- df %>%
+  filter(format(transaction_date, "%B") == "January") %>%
+  summarise(total = sum(transaction_qty * unit_price, na.rm = TRUE))
+
+june_total <- df %>%
+  filter(format(transaction_date, "%B") == "June") %>%
+  summarise(total = sum(transaction_qty * unit_price, na.rm = TRUE))
+
+percentage_increase <- ((june_total$total - january_total$total) / january_total$total) * 100
+
+formatted_percentage_increase <- paste(round(percentage_increase), "%", sep = "")
+
+valueBox(formatted_percentage_increase, "Percent Increase in Sales from Jan to June", icon = "fa-line-chart",
+         col = "rgb(94, 201, 98)")
+
+```
+
+
+## Row 1 {data-height=20}
+
+Column {.tabset .tabset-fade data-width=650} 
+-----------------------------------------------------------------------
+
+### Top Ten Products {data-height=600}
+
+```{r fig.height=5}
+# Colors
+custom_colors <- viridis::mako(n = 10)
+
+# Product Type
+p<-df |> 
+  group_by(product_type) |>
+  summarise(freq=sum(transaction_qty)) |>
+  arrange(desc(freq)) |>
+  top_n(10) |>
+  #plot
+    ggplot(aes(x=reorder(product_type,-freq), y=freq)) +
+    geom_col(width = 0.6, fill=custom_colors) +
+    ylab("Count") +
+    xlab("Product Type") +
+    ggtitle("Top 10 Product Types") +
+    theme_classic() +
+    theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+      axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
+
+ggplotly(p) 
+    #geom_blank()
+    
+
+```
+
+
+
+###  Most Popular Prodcuts by Category {data-height=600}
+```{r fig.height=5}
+
+custom_colors <- viridis::plasma(n = 9)
+
+# Most Popular Products by Category 
+g<-df |> 
+  group_by(product_category) |>
+  summarise(freq=sum(transaction_qty)) |>
+  arrange(desc(freq)) |>
+  top_n(10) |>
+  #plot
+   ggplot(aes(x=reorder(product_category,freq), y=freq)) +
+    geom_col(width = 0.6, fill=custom_colors) +
+    ylab("Count") +
+    xlab("Product Category") +
+    ggtitle("Top Prodcuct Category") +
+    coord_flip() +
+    theme_classic() +
+    theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+      axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+ggplotly(g) 
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### {.no-padding data-height=200}
+
+```{r}
+
+df |>
+  group_by(store_location) |>
+  summarise(freq = sum(transaction_qty)) |>
+  ungroup() |>
+  mutate(percent = (freq / sum(freq)) * 100) |>
+
+  #pie chart
+  plotly::plot_ly(values=~percent,labels=~factor(store_location), textinfo = 'label', hoverinfo='percent', textfont = list(color = 'white'),
+                marker=list(colors=c("rgb(81, 18, 124)", 'rgb(183, 55, 121)
+', 'rgb(252, 137, 97)
+')),
+      marker=list(colors="custom_colors"),
+      type="pie") |> layout(title="Sales by Store Location", showlegend = F)
+
+
+
+
+
+```
+
+
+### {.no-padding data-height=200}
+
+```{r}
+
+df |>
+  group_by(transaction_date) |>
+  summarise(n=n()) |>
+  
+plot_ly(x = ~transaction_date, y = ~n, type = 'scatter', mode = 'lines') |>
+  layout(title = "Sales per Month",
+         xaxis = list(title = "Months", showgrid=FALSE, showline = TRUE, ticks = 'outside'),
+         yaxis = list (title = "Total Transactions", showgrid=FALSE, showline = TRUE, ticks = 'outside'))
+
+
+```
+
+
+
+Product Pricing
+==========
+```{r}
+# This is going to be a datatable
+top_products <- df |>
+  group_by(product_detail) |>
+  summarise(unit_price = round(mean(unit_price),2)) |>
+  arrange(desc(unit_price)) |>
+  top_n(100) 
+  
+top_products <- top_products |>
+  rename('Product Detail' = product_detail,
+         'Unit Price' = unit_price) |>
+  select('Product Detail', 'Unit Price')
+#html table
+top_products |>
+  kbl() |>
+  kable_styling(bootstrap_options = c("striped", "hover")) 
+  #title("Product Price")
+
+
+      
+
+```
+
