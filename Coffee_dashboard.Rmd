@@ -2,15 +2,12 @@
 title: "Maven Roasters Coffee Sales"
 output: 
   flexdashboard::flex_dashboard:
-    #orientation: rows
     vertical_layout: scroll
 ---
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(tidyverse)
-library(highcharter)
-library(htmltools)
 library(viridis)
 library(plotly)
 library(kableExtra)
@@ -31,7 +28,7 @@ Row
 
 ### Total Transactions 
 ```{r}
-transtotal <- df %>%
+transtotal <- df |>
   summarise(total = sum(transaction_qty))
 
 formatted_total <- format(transtotal$total, big.mark = ",")
@@ -43,7 +40,7 @@ valueBox(formatted_total, "Total Transactions", icon = "fa-users", col= "rgb(59,
 
 ```{r}
 
-total_value <- df %>%
+total_value <- df |>
   summarise(total = sum(transaction_qty * unit_price, na.rm = TRUE))
 
 rounded_total_value <- round(total_value$total)
@@ -104,8 +101,7 @@ p<-df |>
       axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
 
 ggplotly(p) 
-    #geom_blank()
-    
+
 
 ```
 
@@ -186,7 +182,7 @@ plot_ly(x = ~transaction_date, y = ~n, type = 'scatter', mode = 'lines') |>
 Product Pricing
 ==========
 ```{r}
-# This is going to be a datatable
+# This is going to be a data table
 top_products <- df |>
   group_by(product_detail) |>
   summarise(unit_price = round(mean(unit_price),2)) |>
@@ -197,11 +193,10 @@ top_products <- top_products |>
   rename('Product Detail' = product_detail,
          'Unit Price' = unit_price) |>
   select('Product Detail', 'Unit Price')
-#html table
+#Table
 top_products |>
   kbl() |>
   kable_styling(bootstrap_options = c("striped", "hover")) 
-  #title("Product Price")
 
 
       
