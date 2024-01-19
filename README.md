@@ -1,6 +1,6 @@
 # Maven Coffee Sales Dashboard <br />
 
-This Coffee Dashboard was created by using Flexdashboard in RStudio. The dataset is from Kaggle. 
+This Maven Coffee Sales Dashboard was created by using Flexdashboard in RStudio. The dataset is from Kaggle. 
 
 
 ![Coffee Sales Dashboard](Coffee_Sales_Dashboard.gif "Coffee Sales Dashboard") <br />
@@ -11,8 +11,8 @@ This Coffee Dashboard was created by using Flexdashboard in RStudio. The dataset
 * Flexdashboard
 * Tidyverse
 * Plotly
-* kableExtra
-* viridis
+* KableExtra
+* Viridis
 * Readxl
 
 
@@ -24,7 +24,7 @@ This Coffee Dashboard was created by using Flexdashboard in RStudio. The dataset
 ![Overview and Top Products by Category](Coffee_Category.png "Overview and Top Products by Category") <br />
 
 ### Sales by Store Location and Sales Overtime <br />
-![Red Wine Quality Predictor App Input](Coffee_Pie_Line.png "Sales by Store Location and Sales Overtime") <br/>
+![Sales by Store Location and Sales Overtime](Coffee_Pie_Line.png "Sales by Store Location and Sales Overtime") <br/>
 
 
 ### Product Price <br />
