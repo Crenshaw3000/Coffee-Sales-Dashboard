@@ -1,4 +1,4 @@
-# Maven Coffee Sales Dashboard <br />
+# Maven Roasters Coffee Sales Dashboard <br />
 
 This Maven Coffee Sales Dashboard was created by using Flexdashboard in RStudio. The dataset is from Kaggle. 
 
