@@ -150,22 +150,22 @@ Product Details
 * **Dashboard Architecture** and UX design
 * **Business Analytics** and insight generation
 
-### Dashboard Screenshots
+## Dashboard Screenshots
 
-## Overview Tab and Top Coffee Products
-![Overview and Top Ten Products](Coffee_Overview.png "Overview Tab and Top Ten Products") <br/>
-
-
-## Overview Tab and Top Products by Category 
-![Overview and Top Products by Category](Coffee_Category.png "Overview Tab and Top Products by Category") <br />
+### Overview Tab and Top Coffee Products
+![Overview and Top Ten Products](Coffee_Overview2.png "Overview Tab and Top Ten Products") <br/>
 
 
-## Overview Tab and Top Products by Revenue 
+### Overview Tab and Top Products by Category 
+![Overview and Top Products by Category](Coffee_Category2.png "Overview Tab and Top Products by Category") <br />
+
+
+### Overview Tab and Top Products by Revenue 
 ![Overview and Top Products by Category](Coffee_Products_Revenue.png "Overview Tab and Top Products by Revenue ") <br />
 
-## Revenue by Store Location and Monthly Revenue by Store Location 
-![Sales by Store Location and Sales Overtime](Coffee_Pie_Line.png "Revenue by Store Location and Monthly Revenue by Store Location") <br/>
+### Revenue by Store Location and Monthly Revenue by Store Location 
+![Sales by Store Location and Sales Overtime](Coffee_Pie_Line2.png "Revenue by Store Location and Monthly Revenue by Store Location") <br/>
 
 
-## Product Price Details and Detailed Store Comparison 
-![Product Price](Coffee_Product_Price.png "Product Price Details and Detailed Store Comparison") <br />
+### Product Price Details and Detailed Store Comparison 
+![Product Price](Coffee_Product_Price2.png "Product Price Details and Detailed Store Comparison") <br />
