@@ -1,0 +1,341 @@
+---
+title: "Maven Roasters Coffee Sales Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    vertical_layout: scroll
+    theme: bootstrap
+    source_code: embed
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(readxl)
+library(viridis)
+library(plotly)
+library(kableExtra)
+library(lubridate)
+
+# Set theme for ggplot
+theme_set(theme_minimal())
+```
+
+```{r data-loading}
+# Import and validate data
+df <- read_excel("Coffee_Shop_Sales.xlsx")
+
+# Data validation (since we know there are no missing values)
+cat("✅ Data loaded successfully:")
+cat("\n   Rows:", nrow(df))
+cat("\n   Columns:", ncol(df))
+cat("\n   Date range:", as.character(min(df$transaction_date)), "to", as.character(max(df$transaction_date)))
+cat("\n   Missing values:", sum(is.na(df)))
+
+# Data preprocessing
+df <- df %>%
+  mutate(
+    transaction_date = as.Date(transaction_date),
+    month = month(transaction_date, label = TRUE),
+    total_sales = transaction_qty * unit_price,
+    # Add day of week and hour if time data is available
+    weekday = wday(transaction_date, label = TRUE)
+  )
+```
+
+Overview {data-orientation=rows}
+=====================================
+
+Row {data-height=150}
+-------------------------------------
+
+### Total Transactions
+```{r}
+total_transactions <- sum(df$transaction_qty)
+valueBox(
+  value = format(total_transactions, big.mark = ","),
+  caption = "Total Transactions",
+  icon = "fa-shopping-cart",
+  color = "primary"
+)
+```
+
+### Total Sales Revenue
+```{r}
+total_revenue <- sum(df$total_sales, na.rm = TRUE)
+valueBox(
+  value = paste0("$", format(round(total_revenue), big.mark = ",")),
+  caption = "Total Sales Revenue",
+  icon = "fa-dollar-sign",
+  color = "success"
+)
+```
+
+### Average Transaction Value
+```{r}
+avg_transaction <- round(total_revenue / total_transactions, 2)
+valueBox(
+  value = paste0("$", avg_transaction),
+  caption = "Average Transaction Value",
+  icon = "fa-calculator",
+  color = "info"
+)
+```
+
+### Monthly Growth Rate
+```{r}
+# Calculate month-to-month growth
+monthly_sales <- df %>%
+  group_by(month = floor_date(transaction_date, "month")) %>%
+  summarise(monthly_total = sum(total_sales), .groups = "drop") %>%
+  arrange(month) %>%
+  mutate(growth_rate = (monthly_total - lag(monthly_total)) / lag(monthly_total) * 100)
+
+latest_growth <- round(tail(monthly_sales$growth_rate[!is.na(monthly_sales$growth_rate)], 1), 1)
+growth_color <- ifelse(latest_growth >= 0, "success", "danger")
+
+valueBox(
+  value = paste0(latest_growth, "%"),
+  caption = "Latest Month Growth",
+  icon = ifelse(latest_growth >= 0, "fa-arrow-up", "fa-arrow-down"),
+  color = growth_color
+)
+```
+
+Row {data-height=500}
+-------------------------------------
+
+### Sales Trends Over Time
+```{r}
+# Monthly sales trend
+monthly_trend <- df %>%
+  group_by(month = floor_date(transaction_date, "month")) %>%
+  summarise(
+    total_sales = sum(total_sales),
+    total_transactions = sum(transaction_qty),
+    .groups = "drop"
+  )
+
+p1 <- plot_ly(monthly_trend, x = ~month) %>%
+  add_trace(y = ~total_sales, name = "Sales ($)", type = "scatter", mode = "lines+markers",
+            line = list(color = "#2E86AB"), marker = list(color = "#2E86AB")) %>%
+  add_trace(y = ~total_transactions * 10, name = "Transactions (x10)", type = "scatter", mode = "lines+markers",
+            line = list(color = "#A23B72"), marker = list(color = "#A23B72"), yaxis = "y2") %>%
+  layout(
+    title = "Sales Revenue and Transaction Trends",
+    xaxis = list(title = "Month"),
+    yaxis = list(title = "Sales Revenue ($)", side = "left"),
+    yaxis2 = list(title = "Transactions", side = "right", overlaying = "y"),
+    hovermode = "x unified"
+  )
+p1
+```
+
+### Store Performance Comparison
+```{r}
+store_performance <- df %>%
+  group_by(store_location) %>%
+  summarise(
+    total_sales = sum(total_sales),
+    total_transactions = sum(transaction_qty),
+    avg_transaction_value = round(total_sales / total_transactions, 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_sales))
+
+p2 <- plot_ly(store_performance, x = ~reorder(store_location, total_sales), y = ~total_sales, 
+              type = "bar", marker = list(color = ~total_sales, colorscale = "Viridis")) %>%
+  layout(
+    title = "Total Sales by Store Location",
+    xaxis = list(title = "Store Location"),
+    yaxis = list(title = "Total Sales ($)"),
+    showlegend = FALSE
+  )
+p2
+```
+
+Products Analysis {data-orientation=columns}
+=====================================
+
+Column {data-width=400}
+-------------------------------------
+
+### Top 10 Products by Revenue
+```{r}
+top_products_revenue <- df %>%
+  group_by(product_detail) %>%
+  summarise(
+    total_revenue = sum(total_sales),
+    total_qty = sum(transaction_qty),
+    avg_price = round(mean(unit_price), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_revenue)) %>%
+  slice_head(n = 10)
+
+p3 <- plot_ly(top_products_revenue, 
+              y = ~reorder(product_detail, total_revenue), 
+              x = ~total_revenue,
+              type = "bar", 
+              orientation = "h",
+              marker = list(color = ~total_revenue, colorscale = "Plasma")) %>%
+  layout(
+    title = "Top 10 Products by Revenue",
+    xaxis = list(title = "Total Revenue ($)"),
+    yaxis = list(title = "Product"),
+    margin = list(l = 150)
+  )
+p3
+```
+
+### Product Category Performance
+```{r}
+category_performance <- df %>%
+  group_by(product_category) %>%
+  summarise(
+    total_sales = sum(total_sales),
+    total_qty = sum(transaction_qty),
+    product_count = n_distinct(product_detail),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_sales))
+
+colors <- c('#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', 
+            '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE')
+
+p4 <- plot_ly(category_performance, 
+              labels = ~product_category, 
+              values = ~total_sales,
+              type = "pie",
+              marker = list(colors = colors),
+              textinfo = "label+percent",
+              textposition = "outside") %>%
+  layout(
+    title = "Sales Distribution by Product Category",
+    showlegend = FALSE
+  )
+p4
+```
+
+Column {data-width=600}
+-------------------------------------
+
+### Product Type Analysis
+```{r}
+# Enhanced product type analysis
+product_type_analysis <- df %>%
+  group_by(product_type) %>%
+  summarise(
+    total_revenue = sum(total_sales),
+    total_qty = sum(transaction_qty),
+    avg_price = round(mean(unit_price), 2),
+    avg_qty_per_transaction = round(mean(transaction_qty), 1),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_revenue)) %>%
+  slice_head(n = 15)
+
+p5 <- plot_ly(product_type_analysis, x = ~reorder(product_type, -total_revenue), y = ~total_revenue,
+              type = "bar", marker = list(color = ~avg_price, colorscale = "Viridis", 
+                                        colorbar = list(title = "Avg Price ($)"))) %>%
+  layout(
+    title = "Product Types: Revenue and Average Price",
+    xaxis = list(title = "Product Type", tickangle = -45),
+    yaxis = list(title = "Total Revenue ($)"),
+    margin = list(b = 100)
+  )
+p5
+```
+
+### Daily Sales Pattern
+```{r}
+# Daily pattern analysis
+daily_pattern <- df %>%
+  group_by(weekday) %>%
+  summarise(
+    avg_daily_sales = round(mean(total_sales), 2),
+    total_transactions = sum(transaction_qty),
+    .groups = "drop"
+  )
+
+p6 <- plot_ly(daily_pattern, x = ~weekday, y = ~avg_daily_sales, type = "bar",
+              marker = list(color = ~avg_daily_sales, colorscale = "Blues")) %>%
+  layout(
+    title = "Average Daily Sales by Day of Week",
+    xaxis = list(title = "Day of Week"),
+    yaxis = list(title = "Average Sales ($)")
+  )
+p6
+```
+
+Detailed Analytics
+=====================================
+
+Row
+-------------------------------------
+
+### Product Pricing Analysis
+```{r}
+# Enhanced pricing table with more insights
+pricing_analysis <- df %>%
+  group_by(product_detail, product_type, product_category) %>%
+  summarise(
+    avg_price = round(mean(unit_price), 2),
+    min_price = round(min(unit_price), 2),
+    max_price = round(max(unit_price), 2),
+    total_sold = sum(transaction_qty),
+    total_revenue = round(sum(total_sales), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_revenue)) %>%
+  slice_head(n = 50) %>%
+  select(
+    `Product` = product_detail,
+    `Category` = product_category,
+    `Type` = product_type,
+    `Avg Price` = avg_price,
+    `Total Sold` = total_sold,
+    `Revenue` = total_revenue
+  )
+
+pricing_analysis %>%
+  kbl() %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE,
+    font_size = 12
+  ) %>%
+  scroll_box(height = "500px")
+```
+
+### Store Comparison Table
+```{r}
+# Detailed store comparison
+store_details <- df %>%
+  group_by(store_location) %>%
+  summarise(
+    total_transactions = sum(transaction_qty),
+    total_revenue = round(sum(total_sales), 2),
+    avg_transaction_value = round(sum(total_sales) / sum(transaction_qty), 2),
+    unique_products = n_distinct(product_detail),
+    top_category = names(sort(table(product_category), decreasing = TRUE))[1],
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_revenue)) %>%
+  rename(
+    `Store Location` = store_location,
+    `Total Transactions` = total_transactions,
+    `Total Revenue` = total_revenue,
+    `Avg Transaction Value` = avg_transaction_value,
+    `Unique Products` = unique_products,
+    `Top Category` = top_category
+  )
+
+store_details %>%
+  kbl() %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = TRUE,
+    font_size = 14
+  ) %>%
+  add_header_above(c(" " = 1, "Performance Metrics" = 3, "Product Info" = 2))
+```

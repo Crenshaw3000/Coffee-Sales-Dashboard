@@ -16,7 +16,8 @@ library(readxl)
 
 ```{r}
 #Importing data
-df <- read_excel("/Users/shirleycrenshaw/Dropbox/Mac/Desktop/Coffee_sales/Coffee_Shop_Sales.xlsx")
+df <- read_excel("Coffee_Shop_Sales.xlsx")
+
 ```
 
 
@@ -36,7 +37,8 @@ formatted_total <- format(transtotal$total, big.mark = ",")
 valueBox(formatted_total, "Total Transactions", icon = "fa-users", col= "rgb(59, 82, 139)")
 
 ```
-### Total Sales
+### Total Revenue
+
 
 ```{r}
 
@@ -48,29 +50,29 @@ formatted_total_value <- format(rounded_total_value, big.mark = ",")
 
 total_with_dollar_sign <- paste("$", formatted_total_value, sep = "")
 
-valueBox(total_with_dollar_sign, "Total Sales", icon="fa-credit-card", col="rgb(33, 145, 140)")
-
-
+valueBox(total_with_dollar_sign, "Total Revenue", icon="fa-credit-card", col="rgb(33, 145, 140)")
 ```
-### Top Ten Products 3
+
+
+### Average Transaction Value
 ```{r}
+avg_transaction <- df |>
+  summarise(
+    total_sales = sum(transaction_qty * unit_price),
+    total_transactions = sum(transaction_qty),
+    avg_value = total_sales / total_transactions
+  )
 
-january_total <- df |>
-  filter(format(transaction_date, "%B") == "January") |>
-  summarise(total = sum(transaction_qty * unit_price, na.rm = TRUE))
+formatted_avg_transaction <- paste0("$", round(avg_transaction$avg_value, 2))
 
-june_total <- df |>
-  filter(format(transaction_date, "%B") == "June") |>
-  summarise(total = sum(transaction_qty * unit_price, na.rm = TRUE))
-
-percentage_increase <- ((june_total$total - january_total$total) / january_total$total) * 100
-
-formatted_percentage_increase <- paste(round(percentage_increase), "%", sep = "")
-
-valueBox(formatted_percentage_increase, "Percent Increase in Sales from Janurary to June", icon = "fa-line-chart",
-         col = "rgb(94, 201, 98)")
-
+valueBox(
+  formatted_avg_transaction,
+  "Average Transaction Value",
+  icon = "fa-calculator",
+  col = "rgb(176, 219, 151)" 
+)
 ```
+
 
 
 ## Row 1 {data-height=20}
@@ -78,7 +80,7 @@ valueBox(formatted_percentage_increase, "Percent Increase in Sales from Janurary
 Column {.tabset .tabset-fade data-width=650} 
 -----------------------------------------------------------------------
 
-### Top Ten Products {data-height=600}
+### Top Ten Product Types {data-height=600}
 
 ```{r fig.height=5}
 # Colors
@@ -91,23 +93,22 @@ p<-df |>
   arrange(desc(freq)) |>
   top_n(10) |>
   #plot
-    ggplot(aes(x=reorder(product_type,-freq), y=freq)) +
+    ggplot(aes(x=reorder(product_type,-freq), y=freq, text = paste0("Product: ", product_type, "<br>Units Sold: ", freq))) +
     geom_col(width = 0.6, fill=custom_colors) +
-    ylab("Count") +
+    ylab("Sold") +
     xlab("Product Type") +
     ggtitle("Top 10 Product Types") +
     theme_classic() +
     theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
       axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) 
 
-ggplotly(p) 
-
+ggplotly(p,  tooltip = "text") 
 
 ```
 
 
-
 ###  Most Popular Prodcuts by Category {data-height=600}
+
 ```{r fig.height=5}
 
 custom_colors <- viridis::plasma(n = 9)
@@ -119,9 +120,9 @@ g<-df |>
   arrange(desc(freq)) |>
   top_n(10) |>
   #plot
-   ggplot(aes(x=reorder(product_category,freq), y=freq)) +
+   ggplot(aes(x=reorder(product_category,freq), y=freq, text = paste0("Product Category: ", product_category, "<br>Units Sold: ", freq))) +
     geom_col(width = 0.6, fill=custom_colors) +
-    ylab("Count") +
+    ylab("Sold") +
     xlab("Product Category") +
     ggtitle("Top Prodcuct Category") +
     coord_flip() +
@@ -129,8 +130,48 @@ g<-df |>
     theme(plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
       axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
 
-ggplotly(g) 
+ggplotly(g, tooltip="text") 
 
+```
+
+### Top 10 Products by Revenue
+```{r fig.height=5}
+# Colors
+custom_colors <- viridis::mako(n = 10)
+
+# Calculate top products by revenue
+top_products_revenue <- df |>
+  group_by(product_detail) |>
+  summarise(
+    total_revenue = sum(transaction_qty * unit_price),
+    total_qty = sum(transaction_qty),
+    avg_price = round(mean(unit_price), 2),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_revenue)) |>
+  slice_head(n = 10)
+
+# Create ggplot version
+p3 <- top_products_revenue |>
+  ggplot(aes(x = total_revenue, y = reorder(product_detail, total_revenue), text = paste0("Product: ", product_detail, "<br> Total Revenue: ", scales::dollar(total_revenue))  # custom hover
+  )) +
+  geom_col(width = 0.7, fill = custom_colors) +
+  labs(
+    title = "Top 10 Products by Revenue",
+    x = "Total Revenue ($)",
+    y = "Product"
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 10),
+    plot.margin = margin(20, 20, 20, 60)  # top, right, bottom, left margins
+  ) +
+  scale_x_continuous(labels = scales::dollar_format())  # Format x-axis as currency
+
+# Convert to interactive plotly
+ggplotly(p3,  tooltip="text")
 ```
 
 Column {data-width=350}
@@ -139,23 +180,25 @@ Column {data-width=350}
 ### {.no-padding data-height=200}
 
 ```{r}
+custom_colors <- c("#0d0887", "#b12a90", "#fca636")
 
 df |>
-  group_by(store_location) |>
-  summarise(freq = sum(transaction_qty)) |>
-  ungroup() |>
-  mutate(percent = (freq / sum(freq)) * 100) |>
+  group_by(store_location) |> 
+  summarise(revenue= sum (transaction_qty * unit_price, na.rm = TRUE), .groups = "drop") |>
+
 
   #pie chart
-  plotly::plot_ly(values=~percent,labels=~factor(store_location), textinfo = 'label', hoverinfo='percent', textfont = list(color = 'white'),
-                marker=list(colors=c("rgb(81, 18, 124)", 'rgb(183, 55, 121)
-', 'rgb(252, 137, 97)
-')),
-      marker=list(colors="custom_colors"),
-      type="pie") |> layout(title="Sales by Store Location", showlegend = F)
-
-
-
+  plotly::plot_ly(values=~revenue,labels=~factor(store_location), textinfo = 'label', hoverinfo='label+percent+text', text = ~scales::dollar(revenue), textfont = list(color = 'white'),
+                marker = list(colors = custom_colors ),
+    type = "pie"
+  ) |>
+  layout(
+    title = list(
+      text = "Revenue by Store Location",
+      font = list(size = 16)   
+    ),
+    showlegend = FALSE
+  )
 
 
 ```
@@ -164,42 +207,115 @@ df |>
 ### {.no-padding data-height=200}
 
 ```{r}
+custom_colors <- c("#0d0887", "#b12a90", "#fca636")
+
+#line chart
 
 df |>
-  group_by(transaction_date) |>
-  summarise(n=n()) |>
-  
-plot_ly(x = ~transaction_date, y = ~n, type = 'scatter', mode = 'lines') |>
-  layout(title = "Sales per Month",
-         xaxis = list(title = "Months", showgrid=FALSE, showline = TRUE, ticks = 'outside'),
-         yaxis = list (title = "Total Transactions", showgrid=FALSE, showline = TRUE, ticks = 'outside'))
-
+  mutate(month = floor_date(transaction_date, "month")) |>   # group by month
+  group_by(month, store_location) |>
+  summarise(revenue = sum(transaction_qty * unit_price, na.rm = TRUE), .groups = "drop") |>
+  plotly::plot_ly(
+    x = ~month,
+    y = ~revenue,
+    color = ~store_location,
+    colors = custom_colors,    
+    type = 'scatter',
+    mode = 'lines+markers',
+    text = ~paste0(store_location, "<br>Revenue: ", scales::dollar(revenue)),
+    hoverinfo = 'text'
+  ) |>
+  layout(
+    title = list(
+      text = "Monthly Revenue by Store Location",
+      font = list(size = 16)
+    ),
+    xaxis = list(
+      title = "Month",
+      showgrid = FALSE,
+      showline = TRUE,
+      ticks = "outside"
+    ),
+    yaxis = list(
+      title = "Revenue ($)",
+      showgrid = FALSE,
+      showline = TRUE,
+      ticks = "outside"
+    )
+  )
 
 ```
 
 
-
-Product Pricing
+Product Details
 ==========
-```{r}
-# This is going to be a data table
-top_products <- df |>
-  group_by(product_detail) |>
-  summarise(unit_price = round(mean(unit_price),2)) |>
-  arrange(desc(unit_price)) |>
-  top_n(100) 
-  
-top_products <- top_products |>
-  rename('Product Detail' = product_detail,
-         'Unit Price' = unit_price) |>
-  select('Product Detail', 'Unit Price')
-#Table
-top_products |>
-  kbl() |>
-  kable_styling(bootstrap_options = c("striped", "hover")) 
 
+### Product Pricing Analysis
+```{r}
+
+# This is going to be a data table
+pricing_analysis <- df |>
+  group_by(product_detail, product_type, product_category) |>
+  summarise(
+    avg_price = round(mean(unit_price), 2),
+    min_price = round(min(unit_price), 2),
+    max_price = round(max(unit_price), 2),
+    total_sold = sum(transaction_qty),
+    total_revenue = round(sum(transaction_qty * unit_price), 2),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_revenue)) |>
+  slice_head(n = 50) |>
+  select(
+    `Product` = product_detail,
+    `Category` = product_category,
+    `Type` = product_type,
+    `Avg Price` = avg_price,
+    `Total Sold` = total_sold,
+    `Revenue` = total_revenue
+  )
+
+pricing_analysis |>
+  kbl() |>
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE,
+    font_size = 12
+  ) |>
+  scroll_box(height = "500px")
+```
 
       
+### Store Comparison Table
+```{r}
+# Detailed store comparison
+store_details <- df |>
+  group_by(store_location) |>
+  summarise(
+    total_transactions = sum(transaction_qty),
+    total_revenue = round(sum(transaction_qty * unit_price), 2),
+    avg_transaction_value = round(sum(transaction_qty * unit_price) / sum(transaction_qty), 2),
+    unique_products = n_distinct(product_detail),
+    top_category = names(sort(table(product_category), decreasing = TRUE))[1],
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_revenue)) |>
+  rename(
+    `Store Location` = store_location,
+    `Total Transactions` = total_transactions,
+    `Total Revenue` = total_revenue,
+    `Avg Transaction Value` = avg_transaction_value,
+    `Unique Products` = unique_products,
+    `Top Category` = top_category
+  )
 
+store_details |>
+  kbl() |>
+  kable_styling(
+    bootstrap_options = c("striped", "hover"),
+    full_width = TRUE,
+    font_size = 14
+  ) |>
+  add_header_above(c(" " = 1, "Performance Metrics" = 3, "Product Info" = 2))
 ```
 
